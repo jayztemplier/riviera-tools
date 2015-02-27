@@ -49,6 +49,10 @@ class UploadCommand: Command {
     }
     
     override func handleOptions() {
+        onFlags(["--verbose"], block: { (flag) -> () in
+            self.verbose = true
+        }, usage: "Show more details about what's happening.")
+
         onFlags(["--randompasscode"], block: { (flag) -> () in
             self.randompasscode = true
             
@@ -124,7 +128,7 @@ class UploadCommand: Command {
         if commitHash != nil && lastCommitHash != nil {
             if let gitNotes = gitLogs(lastCommitHash!) {
                 if let note = self.note {
-                    self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
+                    self.note = note.stringByAppendingFormat("\\n\\n%@", gitNotes)
                 } else {
                     self.note = gitNotes
                 }
@@ -196,6 +200,9 @@ class UploadCommand: Command {
             
             // run the command and see how it goes.
             var failedInBlock = true
+            if verbose {
+                println(command)
+            }
             let status: Int32 = shellCommand(command) { (status, output) -> Void in
                 if output == "ok" {
                     failedInBlock = false
@@ -247,7 +254,9 @@ class UploadCommand: Command {
             }
             
             if note != nil {
-                command = command.stringByAppendingFormat("-F note=\"%@\" ", note!)
+                // filter out the escaped carriage returns into something usable.
+                let tempNote = note!.stringByReplacingOccurrencesOfString("\\n", withString: "\n")
+                command = command.stringByAppendingFormat("-F note=\"%@\" ", tempNote)
             }
             
             if version != nil {
@@ -262,6 +271,9 @@ class UploadCommand: Command {
                 command = command.stringByAppendingFormat("-F commit_sha=\"%@\" ", commitHash!)
             }
             
+            if verbose {
+                println(command)
+            }
             let status: Int32 = shellCommand(command as String) { (status, output) -> Void in
                 let json = JSON(string: output)
                 if let resultURL = json["file_url"].asString {
@@ -293,7 +305,11 @@ class UploadCommand: Command {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(projectDir)
         }
         
-        let status: Int32 = shellCommand("git log --format='%H' -n 1") { (status, output) -> Void in
+        let command = "git log --format='%H' -n 1"
+        if verbose {
+            println(command)
+        }
+        let status: Int32 = shellCommand(command) { (status, output) -> Void in
             if status == 0 {
                 commitHash = output.stringByReplacingOccurrencesOfString("\n", withString: "")
             }
@@ -314,6 +330,10 @@ class UploadCommand: Command {
         var commitHash: String? = nil
         
         let command = String(format: "curl -XGET \"http://beta.rivierabuild.com/api/applications/%@/builds/latest\" -F api_key=\"%@\"", appID!, apiKey!)
+        
+        if verbose {
+            println(command)
+        }
         let status: Int32 = shellCommand(command) { (status, output) -> Void in
             let json = JSON(string: output)
             if let hash = json["commit_sha"].asString {
@@ -334,6 +354,9 @@ class UploadCommand: Command {
         }
         
         let command = String(format: "curl -XGET \"http://beta.rivierabuild.com/api/applications/%@/builds/latest\" -F api_key=\"%@\"", appID!, apiKey!)
+        if verbose {
+            println(command)
+        }
         let status: Int32 = shellCommand(command) { (status, output) -> Void in
             let json = JSON(string: output)
             if let version = json["version"].asString {
@@ -358,7 +381,10 @@ class UploadCommand: Command {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(projectDir)
         }
         
-        let command = String(format: "git log %@.. --format=\"- %%s   -- %%cn\"", sinceHash)
+        let command = String(format: "git log --no-merges %@..HEAD --format=\"- %%s   -- %%cn\"", sinceHash)
+        if verbose {
+            println(command)
+        }
         let status: Int32 = shellCommand(command) { (status, output) -> Void in
             if status == 0 {
                 commitNotes = output
@@ -367,12 +393,9 @@ class UploadCommand: Command {
                 // how to exclude it, so i'm doing this hacky thing.  :(
                 
                 var logs: [String] = commitNotes!.componentsSeparatedByString("\n")
-                // the last is an empty string.
-                logs.removeLast()
-                // now the last is the log associated with sinceHash.
-                logs.removeLast()
                 
-                commitNotes = "\n".join(logs)
+                // escape the carriage returns
+                commitNotes = "\\n".join(logs)
             }
         }
         
