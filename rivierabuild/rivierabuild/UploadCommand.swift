@@ -12,6 +12,7 @@ class UploadCommand: Command {
     
     // flags
     private var randompasscode: Bool = false
+    private var verbose: Bool = false
 
     // key/value pairs
     private var availability: String? = nil
