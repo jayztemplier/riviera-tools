@@ -38,3 +38,5 @@ Usage: rivierabuild upload <displayname> <ipa> [options]
 --slackchannel <slackchannel>            The Slack channel to post to.
 -h, --help                               Show help information for this command
 ```
+
+To use slack integration, on your slack domain, add an "Incoming WebHook" integration step.  Customize the name and icon of the webhook bot.  You can also set a default channel to post in.  This can be overridden by the --slackchannel parameters.  The webhook URL shown here is what you'll pass to --slackhookurl.
