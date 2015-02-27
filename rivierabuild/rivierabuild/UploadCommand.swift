@@ -76,7 +76,7 @@ class UploadCommand: Command {
         }, usage: "The note to show in RivieraBuild", valueSignature: "note")
         
         onKeys(["--projectdir"], block: { (key, value) -> () in
-            self.passcode = value
+            self.projectDir = value
         }, usage: "The directory of your project, for Git logs.", valueSignature: "projectdir")
         
         // slack config bits
