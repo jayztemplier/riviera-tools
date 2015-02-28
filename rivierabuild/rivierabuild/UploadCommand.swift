@@ -131,15 +131,15 @@ class UploadCommand: Command {
         
         // try and get the build notes from git log.
         // these will be merged with whatever was passed along in --note.
-        /*if commitHash != nil && lastCommitHash != nil {
+        if commitHash != nil && lastCommitHash != nil {
             if let gitNotes = gitLogs(lastCommitHash!) {
                 if let note = self.note {
-                    self.note = note.stringByAppendingFormat("\\n\\n%@", gitNotes)
+                    self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
                 } else {
                     self.note = gitNotes
                 }
             }
-        }*/
+        }
         
         // try to send it to riviera
         
