@@ -125,7 +125,7 @@ class UploadCommand: Command {
         
         // try and get the build notes from git log.
         // these will be merged with whatever was passed along in --note.
-        if commitHash != nil && lastCommitHash != nil {
+        /*if commitHash != nil && lastCommitHash != nil {
             if let gitNotes = gitLogs(lastCommitHash!) {
                 if let note = self.note {
                     self.note = note.stringByAppendingFormat("\\n\\n%@", gitNotes)
@@ -133,7 +133,7 @@ class UploadCommand: Command {
                     self.note = gitNotes
                 }
             }
-        }
+        }*/
         
         // try to send it to riviera
         result = sendToRiviera()
@@ -167,22 +167,22 @@ class UploadCommand: Command {
             let displayName = arguments["displayname"] as! String
             
             // we'll have a URL here too (or it would have failed before) so unwrap rivieraURL.
-            var slackNote: String = String(format: "_*%@*_\\nInstall URL: %@", displayName, rivieraURL!)
+            var slackNote: String = String(format: "_*%@*_\nInstall URL: %@", displayName, rivieraURL!)
             
             if let passcode = passcode {
-                slackNote = slackNote.stringByAppendingFormat("\\nPasscode: %@", passcode)
+                slackNote = slackNote.stringByAppendingFormat("\nPasscode: %@", passcode)
             }
             
             if let version = version {
-                slackNote = slackNote.stringByAppendingFormat("\\nVersion: %@", version)
+                slackNote = slackNote.stringByAppendingFormat("\nVersion: %@", version)
             }
             
             if let buildNumber = buildNumber {
-                slackNote = slackNote.stringByAppendingFormat("\\nBuild Number: %@", buildNumber)
+                slackNote = slackNote.stringByAppendingFormat("\nBuild Number: %@", buildNumber)
             }
             
             if let note = note {
-                slackNote = slackNote.stringByAppendingFormat("\\nNotes:\\n\\n %@", note)
+                slackNote = slackNote.stringByAppendingFormat("\nNotes:\n\n %@", note)
             }
 
             // build the command itself for Curl.
@@ -193,7 +193,7 @@ class UploadCommand: Command {
             }
             
             // we built up the slack note earlier.
-            command = command.stringByAppendingFormat("\\\"text\\\": \\\"%@\\\"", slackNote)
+            command = command.stringByAppendingFormat("\\\"text\\\": \\\"%@\\\"", slackNote.escapedForCommandLine(true))
             
             // finish up the json.
             command = command.stringByAppendingFormat("}\" %@", slackHookURL!)
@@ -255,8 +255,7 @@ class UploadCommand: Command {
             
             if note != nil {
                 // filter out the escaped carriage returns into something usable.
-                let tempNote = note!.stringByReplacingOccurrencesOfString("\\n", withString: "\n")
-                command = command.stringByAppendingFormat("-F note=\"%@\" ", tempNote)
+                command = command.stringByAppendingFormat("-F note=\"%@\" ", note!.escapedForCommandLine(false))
             }
             
             if version != nil {
@@ -395,7 +394,7 @@ class UploadCommand: Command {
                 var logs: [String] = commitNotes!.componentsSeparatedByString("\n")
                 
                 // escape the carriage returns
-                commitNotes = "\\n".join(logs)
+                commitNotes = "\n".join(logs)
             }
         }
         

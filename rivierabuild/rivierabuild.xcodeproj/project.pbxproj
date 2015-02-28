@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		CA4A207E1A9E5FA40014BBC9 /* PasswordGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A207D1A9E5FA40014BBC9 /* PasswordGenerator.swift */; };
+		CA4A20801AA1362E0014BBC9 /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A207F1AA1362E0014BBC9 /* String.swift */; };
 		CAE5D4B11A9CF8DD002F6D0E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE5D4B01A9CF8DD002F6D0E /* main.swift */; };
 		CAE5D4C51A9CF905002F6D0E /* Arguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE5D4B81A9CF905002F6D0E /* Arguments.swift */; };
 		CAE5D4C61A9CF905002F6D0E /* CLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE5D4B91A9CF905002F6D0E /* CLI.swift */; };
@@ -43,6 +44,7 @@
 
 /* Begin PBXFileReference section */
 		CA4A207D1A9E5FA40014BBC9 /* PasswordGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasswordGenerator.swift; sourceTree = "<group>"; };
+		CA4A207F1AA1362E0014BBC9 /* String.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = String.swift; sourceTree = "<group>"; };
 		CAE5D4AD1A9CF8DD002F6D0E /* rivierabuild */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = rivierabuild; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAE5D4B01A9CF8DD002F6D0E /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		CAE5D4B81A9CF905002F6D0E /* Arguments.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Arguments.swift; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				CAE5D4D71A9D9371002F6D0E /* NSFileManager.swift */,
+				CA4A207F1AA1362E0014BBC9 /* String.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -211,6 +214,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CA4A20801AA1362E0014BBC9 /* String.swift in Sources */,
 				CAE5D4D21A9CF937002F6D0E /* UploadCommand.swift in Sources */,
 				CAE5D4C91A9CF905002F6D0E /* HelpCommand.swift in Sources */,
 				CA4A207E1A9E5FA40014BBC9 /* PasswordGenerator.swift in Sources */,
