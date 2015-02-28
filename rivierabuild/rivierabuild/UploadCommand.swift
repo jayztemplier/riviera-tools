@@ -6,6 +6,10 @@
 //  Copyright (c) 2015 TheHolyGrail. All rights reserved.
 //
 
+//  Definitely *not* my best code, but with Testflight shutting down, I had 2 days
+//  to get something working with Jenkins. :(  Bad Brandon, Bad!  I look forward
+//  to your improvements, community!
+
 import Foundation
 
 class UploadCommand: Command {
@@ -13,6 +17,7 @@ class UploadCommand: Command {
     // flags
     private var randompasscode: Bool = false
     private var verbose: Bool = false
+    private var useGitLogs: Bool = false
 
     // key/value pairs
     private var availability: String? = nil
@@ -53,9 +58,12 @@ class UploadCommand: Command {
             self.verbose = true
         }, usage: "Show more details about what's happening.")
 
+        onFlags(["--disablegitlog"], block: { (flag) -> () in
+            self.useGitLogs = false
+        }, usage: "Disables appending the git log to the notes.")
+        
         onFlags(["--randompasscode"], block: { (flag) -> () in
             self.randompasscode = true
-            
             let randomPassword = PasswordGenerator().generateHex()
             self.passcode = randomPassword
         }, usage: "Generate a random passcode.")
@@ -129,14 +137,16 @@ class UploadCommand: Command {
             lastCommitHash = json["commit_sha"].asString
         }
         
-        // try and get the build notes from git log.
-        // these will be merged with whatever was passed along in --note.
-        if commitHash != nil && lastCommitHash != nil {
-            if let gitNotes = gitLogs(lastCommitHash!) {
-                if let note = self.note {
-                    self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
-                } else {
-                    self.note = gitNotes
+        if useGitLogs {
+            // try and get the build notes from git log.
+            // these will be merged with whatever was passed along in --note.
+            if commitHash != nil && lastCommitHash != nil {
+                if let gitNotes = gitLogs(lastCommitHash!) {
+                    if let note = self.note {
+                        self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
+                    } else {
+                        self.note = gitNotes
+                    }
                 }
             }
         }
