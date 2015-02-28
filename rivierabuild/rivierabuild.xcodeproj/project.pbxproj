@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		CA4A207E1A9E5FA40014BBC9 /* PasswordGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A207D1A9E5FA40014BBC9 /* PasswordGenerator.swift */; };
 		CA4A20801AA1362E0014BBC9 /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A207F1AA1362E0014BBC9 /* String.swift */; };
+		CA4A20821AA1796E0014BBC9 /* SlackWebHookAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A20811AA1796E0014BBC9 /* SlackWebHookAPI.swift */; };
+		CA4A20841AA186130014BBC9 /* RivieraBuildAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A20831AA186130014BBC9 /* RivieraBuildAPI.swift */; };
 		CAE5D4B11A9CF8DD002F6D0E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE5D4B01A9CF8DD002F6D0E /* main.swift */; };
 		CAE5D4C51A9CF905002F6D0E /* Arguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE5D4B81A9CF905002F6D0E /* Arguments.swift */; };
 		CAE5D4C61A9CF905002F6D0E /* CLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE5D4B91A9CF905002F6D0E /* CLI.swift */; };
@@ -45,6 +47,8 @@
 /* Begin PBXFileReference section */
 		CA4A207D1A9E5FA40014BBC9 /* PasswordGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasswordGenerator.swift; sourceTree = "<group>"; };
 		CA4A207F1AA1362E0014BBC9 /* String.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = String.swift; sourceTree = "<group>"; };
+		CA4A20811AA1796E0014BBC9 /* SlackWebHookAPI.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SlackWebHookAPI.swift; sourceTree = "<group>"; };
+		CA4A20831AA186130014BBC9 /* RivieraBuildAPI.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RivieraBuildAPI.swift; sourceTree = "<group>"; };
 		CAE5D4AD1A9CF8DD002F6D0E /* rivierabuild */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = rivierabuild; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAE5D4B01A9CF8DD002F6D0E /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		CAE5D4B81A9CF905002F6D0E /* Arguments.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Arguments.swift; sourceTree = "<group>"; };
@@ -106,6 +110,8 @@
 				CAE5D4B01A9CF8DD002F6D0E /* main.swift */,
 				CAE5D4D91A9D96B3002F6D0E /* Shell.swift */,
 				CAE5D4D11A9CF937002F6D0E /* UploadCommand.swift */,
+				CA4A20811AA1796E0014BBC9 /* SlackWebHookAPI.swift */,
+				CA4A20831AA186130014BBC9 /* RivieraBuildAPI.swift */,
 				CAE5D4D61A9D935F002F6D0E /* Extensions */,
 				CA4A207C1A9E5FA40014BBC9 /* Swift-Password-Generator */,
 				CAE5D4DE1A9DAE46002F6D0E /* JSON */,
@@ -220,6 +226,8 @@
 				CA4A207E1A9E5FA40014BBC9 /* PasswordGenerator.swift in Sources */,
 				CAE5D4CA1A9CF905002F6D0E /* LightweightCommand.swift in Sources */,
 				CAE5D4C51A9CF905002F6D0E /* Arguments.swift in Sources */,
+				CA4A20841AA186130014BBC9 /* RivieraBuildAPI.swift in Sources */,
+				CA4A20821AA1796E0014BBC9 /* SlackWebHookAPI.swift in Sources */,
 				CAE5D4CE1A9CF905002F6D0E /* Output.swift in Sources */,
 				CAE5D4CF1A9CF905002F6D0E /* Router.swift in Sources */,
 				CAE5D4B11A9CF8DD002F6D0E /* main.swift in Sources */,

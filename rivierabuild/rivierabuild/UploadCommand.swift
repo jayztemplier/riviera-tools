@@ -97,6 +97,8 @@ class UploadCommand: Command {
     override func execute() -> CommandResult {
         var result: CommandResult = .Success
         
+        let riviera = RivieraBuildAPI(apiKey: apiKey!)
+        
         // if we were given a projectDir, is it valid?
         if let projectDir = projectDir {
             let fileManager = NSFileManager.defaultManager()
@@ -108,6 +110,7 @@ class UploadCommand: Command {
             }
 
         }
+        
         // get the current commit hash.
         // we'll send this to riviera so we can query it next time.
         commitHash = currentCommitHash()
@@ -120,8 +123,11 @@ class UploadCommand: Command {
         }
         
         // get the last commit hash, we need it later if it's there.
-        lastCommitHash = lastBuildCommitHash()
-        //lastCommitHash = "57fb773b7a957f5a7baa32b90edcbf8d288c34b9"
+        var json = riviera.lastUploadedBuildInfo(appID!)
+        
+        if let json = json {
+            lastCommitHash = json["commit_sha"].asString
+        }
         
         // try and get the build notes from git log.
         // these will be merged with whatever was passed along in --note.
@@ -136,6 +142,7 @@ class UploadCommand: Command {
         }*/
         
         // try to send it to riviera
+        
         result = sendToRiviera()
         switch result {
         case .Success:
@@ -185,33 +192,8 @@ class UploadCommand: Command {
                 slackNote = slackNote.stringByAppendingFormat("\nNotes:\n\n %@", note)
             }
 
-            // build the command itself for Curl.
-            var command: String = String(format: "curl -X POST --data-urlencode \"payload={")
-
-            if let channel = slackChannel {
-                command = command.stringByAppendingFormat("\\\"channel\\\": \\\"%@\\\",", channel)
-            }
-            
-            // we built up the slack note earlier.
-            command = command.stringByAppendingFormat("\\\"text\\\": \\\"%@\\\"", slackNote.escapedForCommandLine(true))
-            
-            // finish up the json.
-            command = command.stringByAppendingFormat("}\" %@", slackHookURL!)
-            
-            // run the command and see how it goes.
-            var failedInBlock = true
-            if verbose {
-                println(command)
-            }
-            let status: Int32 = shellCommand(command) { (status, output) -> Void in
-                if output == "ok" {
-                    failedInBlock = false
-                } else {
-                    println(output)
-                }
-            }
-            
-            if failedInBlock {
+            let slack = SlackWebHookAPI(webHookURL: slackHookURL!)
+            if slack.postToSlack(slackChannel!, text: slackNote) == false {
                 return .Failure("Slack posting failed.")
             }
             
@@ -225,67 +207,53 @@ class UploadCommand: Command {
     func sendToRiviera() -> CommandResult {
         // ipa is a required arg, so force unwrap it.
         let ipa = arguments["ipa"] as! String
-
         // see if the file exists.
         let fileManager = NSFileManager.defaultManager()
         let exists = fileManager.fileExistsAtPath(ipa)
         
         if exists {
-            // it exists, carry on.
-            
-            var command: NSString = NSString(format: "curl \"http://beta.rivierabuild.com/api/upload\" -F file=@\"%@\" ", ipa)
+
+            var parameters = Dictionary<String, AnyObject>()
             
             if availability != nil {
-                command = command.stringByAppendingFormat("-F availability=\"%@\" ", availability!)
+                parameters["availability"] = availability!
             } else {
                 return .Failure("--availability <value> is a required option.")
             }
             
             if passcode != nil {
-                command = command.stringByAppendingFormat("-F passcode=\"%@\" ", passcode!)
-            }
-            
-            if apiKey != nil {
-                command = command.stringByAppendingFormat("-F api_key=\"%@\" ", apiKey!)
+                parameters["passcode"] = passcode!
             }
             
             if appID != nil {
-                command = command.stringByAppendingFormat("-F app_id=\"%@\" ", appID!)
+                parameters["app_id"] = appID!
             }
             
             if note != nil {
-                // filter out the escaped carriage returns into something usable.
-                command = command.stringByAppendingFormat("-F note=\"%@\" ", note!.escapedForCommandLine(false))
+                parameters["note"] = note!
             }
             
             if version != nil {
-                command = command.stringByAppendingFormat("-F version=\"%@\" ", version!)
+                parameters[""] = version!
             }
             
             if buildNumber != nil {
-                command = command.stringByAppendingFormat("-F build_number=\"%@\" ", buildNumber!)
+                parameters["build_number"] = buildNumber!
             }
             
             if commitHash != nil {
-                command = command.stringByAppendingFormat("-F commit_sha=\"%@\" ", commitHash!)
+                parameters["commit_sha"] = commitHash!
             }
-            
-            if verbose {
-                println(command)
-            }
-            let status: Int32 = shellCommand(command as String) { (status, output) -> Void in
-                let json = JSON(string: output)
+
+            let riviera = RivieraBuildAPI(apiKey: apiKey!)
+            let json = riviera.uploadBuild(ipa, parameters: parameters)
+
+            if let json = json {
                 if let resultURL = json["file_url"].asString {
                     self.rivieraURL = resultURL
                 }
             }
-            
-            // was the status code non-zero?  if so, we have failed.
-            if status != 0 {
-                return .Failure("Curl failed to upload the IPA.  Re-run this command with the --verbose option.")
-            }
-            
-            // do we have a resultURL?
+
             if rivieraURL == nil {
                 return .Failure("Failed to get the result URL from RivieraBuild.")
             }
@@ -328,13 +296,10 @@ class UploadCommand: Command {
         
         var commitHash: String? = nil
         
-        let command = String(format: "curl -XGET \"http://beta.rivierabuild.com/api/applications/%@/builds/latest\" -F api_key=\"%@\"", appID!, apiKey!)
-        
-        if verbose {
-            println(command)
-        }
-        let status: Int32 = shellCommand(command) { (status, output) -> Void in
-            let json = JSON(string: output)
+        let riviera = RivieraBuildAPI(apiKey: apiKey!)
+        let json = riviera.lastUploadedBuildInfo(appID!)
+
+        if let json = json {
             if let hash = json["commit_sha"].asString {
                 if hash != "null" {
                     commitHash = hash
@@ -351,13 +316,11 @@ class UploadCommand: Command {
             buildNumber = nil
             return
         }
+
+        let riviera = RivieraBuildAPI(apiKey: apiKey!)
+        let json = riviera.lastUploadedBuildInfo(appID!)
         
-        let command = String(format: "curl -XGET \"http://beta.rivierabuild.com/api/applications/%@/builds/latest\" -F api_key=\"%@\"", appID!, apiKey!)
-        if verbose {
-            println(command)
-        }
-        let status: Int32 = shellCommand(command) { (status, output) -> Void in
-            let json = JSON(string: output)
+        if let json = json {
             if let version = json["version"].asString {
                 if version != "null" && count(version) > 0 {
                     self.version = version
