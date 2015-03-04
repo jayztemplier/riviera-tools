@@ -36,6 +36,12 @@ class UploadCommand: Command {
     private var slackHookURL: String? = nil
     private var slackChannel: String? = "#non-existant-channel"
     
+    
+    // hipchat integration
+    private var hipchatAuthToken: String? = nil
+    private var hipchatRoom: String? = nil
+    private var hipchatColor: String = "green"
+
     // internal vars
     private var rivieraURL: String? = nil
     private var commitHash: String? = nil
@@ -100,117 +106,108 @@ class UploadCommand: Command {
         onKeys(["--slackchannel"], block: { (key, value) -> () in
             self.slackChannel = value
         }, usage: "The Slack channel to post to.", valueSignature: "slackchannel")
+        
+        // hipchat config bits
+        onKeys(["--hipchatauthtoken"], block: { (key, value) -> () in
+            self.hipchatAuthToken = value
+            }, usage: "Your Hipchat auth token. To get it: https://www.hipchat.com/account/api.", valueSignature: "hipchatauthtoken")
+        
+        onKeys(["--hipchatroom"], block: { (key, value) -> () in
+            self.hipchatColor = value
+            }, usage: "The Hipchat room id or name to post to.", valueSignature: "hipchatroom")
+        
+        onKeys(["--hipchatcolor"], block: { (key, value) -> () in
+            self.slackChannel = value
+            }, usage: "Optional color for the notification posted on Hipchat.", valueSignature: "hipchatcolor")
     }
     
     override func execute() -> CommandResult {
         var result: CommandResult = .Success
         
-        let riviera = RivieraBuildAPI(apiKey: apiKey!)
-        
-        // if we were given a projectDir, is it valid?
-        if let projectDir = projectDir {
-            let fileManager = NSFileManager.defaultManager()
-            var isDir: ObjCBool = false
-            let exists = fileManager.fileExistsAtPath(projectDir, isDirectory: &isDir)
+        if let apiKey = self.apiKey {
+            let riviera = RivieraBuildAPI(apiKey: apiKey)
             
-            if !isDir {
-                return .Failure("The specified value for project dir is not a directory or invalid.")
+            // if we were given a projectDir, is it valid?
+            if let projectDir = projectDir {
+                let fileManager = NSFileManager.defaultManager()
+                var isDir: ObjCBool = false
+                let exists = fileManager.fileExistsAtPath(projectDir, isDirectory: &isDir)
+                
+                if !isDir {
+                    return .Failure("The specified value for project dir is not a directory or invalid.")
+                }
+                
             }
-
-        }
-        
-        // get the current commit hash.
-        // we'll send this to riviera so we can query it next time.
-        commitHash = currentCommitHash()
-        
-        if let commitHash = commitHash {
-            if count(commitHash) == 0 {
-                // we don't have it, lets bolt.
-                return .Failure("Unable to query the current commit hash.  Is this a Git repository?")
-            }
-        }
-        
-        // get the last commit hash, we need it later if it's there.
-        var json = riviera.lastUploadedBuildInfo(appID!)
-        
-        if let json = json {
-            lastCommitHash = json["commit_sha"].asString
-        }
-        
-        if useGitLogs {
-            // try and get the build notes from git log.
-            // these will be merged with whatever was passed along in --note.
-            if commitHash != nil && lastCommitHash != nil {
-                if let gitNotes = gitLogs(lastCommitHash!) {
-                    if let note = self.note {
-                        self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
-                    } else {
-                        self.note = gitNotes
+            
+            // get the current commit hash.
+            // we'll send this to riviera so we can query it next time.
+            commitHash = currentCommitHash()
+            // get the last commit hash, we need it later if it's there.
+            if let commitHash = commitHash, let appID = self.appID {
+                if count(commitHash) == 0 {
+                    println("WARNING: we were not able to get a commit sha. Are you using git? If yes, please indicate the root directory with the option --projectdir")
+                }
+                
+                if useGitLogs {
+                    var json = riviera.lastUploadedBuildInfo(appID)
+                    
+                    if let json = json {
+                        lastCommitHash = json["commit_sha"].asString
+                    }
+                    
+                    // try and get the build notes from git log.
+                    // these will be merged with whatever was passed along in --note.
+                    if lastCommitHash != nil {
+                        if let gitNotes = gitLogs(lastCommitHash!) {
+                            if let note = self.note {
+                                self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
+                            } else {
+                                self.note = gitNotes
+                            }
+                        }
                     }
                 }
+            } else {
+                println("WARNING: no application ID specified. If you want to add and application id, use the option --appid")
             }
-        }
-        
-        // try to send it to riviera
-        
-        result = sendToRiviera()
-        switch result {
-        case .Success:
-            0
-        case .Failure(let string):
+            
+            
+            // try to send it to riviera
+            
+            result = sendToRiviera()
+            switch result {
+            case .Success:
+                0
+            case .Failure(let string):
+                return result
+            }
+            
+            // get the version and build from the one we just uploaded so we can use it for slack.
+            fillLastVersionAndBuildNumber()
+            
+            // try to post it to slack
+            result = postToSlack()
+            switch result {
+            case .Success:
+                if let rivieraURL = self.rivieraURL {
+                    println("Riviera: download your app at this URL " + rivieraURL)
+                }
+                0
+            case .Failure(let string):
+                return result
+            }
+            
+            result = postToHipchat()
+            switch result {
+            case .Success:
+                0
+            case .Failure(let string):
+                return result
+            }
+            
             return result
-        }
-        
-        // get the version and build from the one we just uploaded so we can use it for slack.
-        fillLastVersionAndBuildNumber()
-        
-        // try to post it to slack
-        result = postToSlack()
-        switch result {
-        case .Success:
-            0
-        case .Failure(let string):
-            return result
-        }
-        
-        return result
-    }
-    
-    func postToSlack() -> CommandResult {
-        if slackHookURL != nil {
-            // Build the stuff we're going to display on slack...
-            
-            // displayname is a required arg, so force unwrap it.
-            let displayName = arguments["displayname"] as! String
-            
-            // we'll have a URL here too (or it would have failed before) so unwrap rivieraURL.
-            var slackNote: String = String(format: "_*%@*_\nInstall URL: %@", displayName, rivieraURL!)
-            
-            if let passcode = passcode {
-                slackNote = slackNote.stringByAppendingFormat("\nPasscode: %@", passcode)
-            }
-            
-            if let version = version {
-                slackNote = slackNote.stringByAppendingFormat("\nVersion: %@", version)
-            }
-            
-            if let buildNumber = buildNumber {
-                slackNote = slackNote.stringByAppendingFormat("\nBuild Number: %@", buildNumber)
-            }
-            
-            if let note = note {
-                slackNote = slackNote.stringByAppendingFormat("\nNotes:\n\n %@", note)
-            }
-
-            let slack = SlackWebHookAPI(webHookURL: slackHookURL!)
-            if slack.postToSlack(slackChannel!, text: slackNote) == false {
-                return .Failure("Slack posting failed.")
-            }
-            
-            return .Success
         } else {
-            // we just won't be sending to slack, so don't fail.
-            return .Success
+            return .Failure("You have to provide an API key, use the option --apiKey.")
         }
     }
     
@@ -376,6 +373,81 @@ class UploadCommand: Command {
         }
         
         return commitNotes
+    }
+    
+    func postToSlack() -> CommandResult {
+        if slackHookURL != nil {
+            // Build the stuff we're going to display on slack...
+            
+            // displayname is a required arg, so force unwrap it.
+            let displayName = arguments["displayname"] as! String
+            
+            // we'll have a URL here too (or it would have failed before) so unwrap rivieraURL.
+            var slackNote: String = String(format: "_*%@*_\nInstall URL: %@", displayName, rivieraURL!)
+            
+            if let passcode = passcode {
+                slackNote = slackNote.stringByAppendingFormat("\nPasscode: %@", passcode)
+            }
+            
+            if let version = version {
+                slackNote = slackNote.stringByAppendingFormat("\nVersion: %@", version)
+            }
+            
+            if let buildNumber = buildNumber {
+                slackNote = slackNote.stringByAppendingFormat("\nBuild Number: %@", buildNumber)
+            }
+            
+            if let note = note {
+                slackNote = slackNote.stringByAppendingFormat("\nNotes:\n\n %@", note)
+            }
+            
+            let slack = SlackWebHookAPI(webHookURL: slackHookURL!)
+            if slack.postToSlack(slackChannel!, text: slackNote) == false {
+                return .Failure("Slack posting failed.")
+            }
+            
+            return .Success
+        } else {
+            // we just won't be sending to slack, so don't fail.
+            return .Success
+        }
+    }
+    
+    func postToHipchat() -> CommandResult {
+        if let hipchatAuthToken = self.hipchatAuthToken, let room = self.hipchatRoom {
+            // Build the stuff we're going to display on slack...
+            
+            // displayname is a required arg, so force unwrap it.
+            let displayName = arguments["displayname"] as! String
+            
+            // we'll have a URL here too (or it would have failed before) so unwrap rivieraURL.
+            var message: String = String(format: "_*%@*_\nInstall URL: %@", displayName, rivieraURL!)
+            
+            if let passcode = passcode {
+                message = message.stringByAppendingFormat("\nPasscode: %@", passcode)
+            }
+            
+            if let version = version {
+                message = message.stringByAppendingFormat("\nVersion: %@", version)
+            }
+            
+            if let buildNumber = buildNumber {
+                message = message.stringByAppendingFormat("\nBuild Number: %@", buildNumber)
+            }
+            
+            if let note = note {
+                message = message.stringByAppendingFormat("\nNotes:\n\n %@", note)
+            }
+            let hipchat = HipchatIntegration(authToken: hipchatAuthToken)
+            if hipchat.post(room, message: message, color: self.hipchatColor) == false {
+                return .Failure("Hipchat posting failed.")
+            }
+            
+            return .Success
+        } else {
+            // we just won't be sending to slack, so don't fail.
+            return .Success
+        }
     }
     
 }
