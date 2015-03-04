@@ -113,11 +113,11 @@ class UploadCommand: Command {
             }, usage: "Your Hipchat auth token. To get it: https://www.hipchat.com/account/api.", valueSignature: "hipchatauthtoken")
         
         onKeys(["--hipchatroom"], block: { (key, value) -> () in
-            self.hipchatColor = value
+            self.hipchatRoom = value
             }, usage: "The Hipchat room id or name to post to.", valueSignature: "hipchatroom")
         
         onKeys(["--hipchatcolor"], block: { (key, value) -> () in
-            self.slackChannel = value
+            self.hipchatColor = value
             }, usage: "Optional color for the notification posted on Hipchat.", valueSignature: "hipchatcolor")
     }
     
