@@ -14,5 +14,14 @@ let uploadCommand = UploadCommand()
 CLI.registerCommand(uploadCommand)
 
 let result = CLI.go()
+
+//CLI.debugGoWithArgumentString("rivierabuild upload AnimalCrush /Users/jayztemplier/Dev/FrenchDay.ipa --verbose --disablegitlog --apikey 2f0b99e163dead532a18582dae5d05227b310ff4 --availability 10_minutes")
+
+
+CLI.debugGoWithArgumentString("rivierabuild upload AnimalCrush /Users/jayztemplier/Dev/FrenchDay.ipa --verbose --disablegitlog --apikey 2f0b99e163dead532a18582dae5d05227b310ff4 --availability 10_minutes --hipchatauthtoken njkOTK6cyxADmK79X5H77WGrzpCNOoSTtnJ4veCM --hipchatroom 1282111 --passcode templier")
+
+
+
+//-hipchatcolor
 exit(result)
 
