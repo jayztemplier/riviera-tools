@@ -17,7 +17,7 @@ class UploadCommand: Command {
     // flags
     private var randompasscode: Bool = false
     private var verbose: Bool = false
-    private var useGitLogs: Bool = false
+    private var useGitLogs: Bool = true
 
     // key/value pairs
     private var availability: String? = nil
@@ -353,7 +353,7 @@ class UploadCommand: Command {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(projectDir)
         }
         
-        let command = String(format: "git log --no-merges %@..HEAD --format=\"- %%s   -- %%cn\"", sinceHash)
+        let command = String(format: "git log --oneline --no-merges %@..HEAD --format=\"- %%s   -- %%cn\"", sinceHash)
         if verbose {
             println(command)
         }
