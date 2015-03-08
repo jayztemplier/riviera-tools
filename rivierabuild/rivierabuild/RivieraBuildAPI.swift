@@ -47,6 +47,44 @@ public struct RivieraBuildAPI {
         return json
     }
     
+//    http://jayztemplier.github.io/RivieraBuild-API/
+//    curl -XPOST "http://beta.rivierabuild.com/api/upload"
+//    -F file=@"${TMP_FILE_PATH}"
+//    -F availability="${AVAILABILITY}"
+//    -F passcode="${PASSWORD}"
+//    -F app_id="${PASSWORD}"
+//    -F api_key="${API_KEY}"
+//    -F commit_sha="${COMMIT_SHA}"
+//    -F note="${NOTE}"
+//    -F version="${VERSION}"
+//    -F build_number="${BUILD_NUMBER}"
+
+    func uploadBuild(filePath: String, build: Build) -> JSON? {
+        var params = Dictionary<String, String>()
+        if let v = build.availability {
+            params["availability"] = v
+        }
+        if let v = build.passcode {
+            params["passcode"] = v
+        }
+        if let v = build.appID {
+            params["app_id"] = v
+        }
+        if let v = build.commitSha {
+            params["commit_sha"] = v
+        }
+        if let v = build.note {
+            params["note"] = v
+        }
+        if let v = build.version {
+            params["version"] = v
+        }
+        if let v = build.buildNumber {
+            params["build_number"] = v
+        }
+        return self.uploadBuild(filePath, parameters: params)
+    }
+    
     public func uploadBuild(filePath: String, parameters: Dictionary<String, AnyObject>) -> JSON? {
         var json: JSON? = nil;
         

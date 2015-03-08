@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		35301CD21AA6D0CB00AEE5B1 /* HipchatIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35301CD11AA6D0CB00AEE5B1 /* HipchatIntegration.swift */; };
+		3551EA491AABB947009200FE /* Build.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3551EA481AABB947009200FE /* Build.swift */; };
 		CA4A207E1A9E5FA40014BBC9 /* PasswordGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A207D1A9E5FA40014BBC9 /* PasswordGenerator.swift */; };
 		CA4A20801AA1362E0014BBC9 /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A207F1AA1362E0014BBC9 /* String.swift */; };
 		CA4A20821AA1796E0014BBC9 /* SlackWebHookAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4A20811AA1796E0014BBC9 /* SlackWebHookAPI.swift */; };
@@ -47,6 +48,7 @@
 
 /* Begin PBXFileReference section */
 		35301CD11AA6D0CB00AEE5B1 /* HipchatIntegration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HipchatIntegration.swift; sourceTree = "<group>"; };
+		3551EA481AABB947009200FE /* Build.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Build.swift; sourceTree = "<group>"; };
 		CA4A207D1A9E5FA40014BBC9 /* PasswordGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasswordGenerator.swift; sourceTree = "<group>"; };
 		CA4A207F1AA1362E0014BBC9 /* String.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = String.swift; sourceTree = "<group>"; };
 		CA4A20811AA1796E0014BBC9 /* SlackWebHookAPI.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SlackWebHookAPI.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 				CA4A20811AA1796E0014BBC9 /* SlackWebHookAPI.swift */,
 				35301CD11AA6D0CB00AEE5B1 /* HipchatIntegration.swift */,
 				CA4A20831AA186130014BBC9 /* RivieraBuildAPI.swift */,
+				3551EA481AABB947009200FE /* Build.swift */,
 				CAE5D4D61A9D935F002F6D0E /* Extensions */,
 				CA4A207C1A9E5FA40014BBC9 /* Swift-Password-Generator */,
 				CAE5D4DE1A9DAE46002F6D0E /* JSON */,
@@ -236,6 +239,7 @@
 				CAE5D4CF1A9CF905002F6D0E /* Router.swift in Sources */,
 				CAE5D4B11A9CF8DD002F6D0E /* main.swift in Sources */,
 				CAE5D4CB1A9CF905002F6D0E /* VersionCommand.swift in Sources */,
+				3551EA491AABB947009200FE /* Build.swift in Sources */,
 				CAE5D4D01A9CF905002F6D0E /* SignatureParser.swift in Sources */,
 				CAE5D4C61A9CF905002F6D0E /* CLI.swift in Sources */,
 				CAE5D4D81A9D9371002F6D0E /* NSFileManager.swift in Sources */,
