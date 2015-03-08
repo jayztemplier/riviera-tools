@@ -13,173 +13,139 @@
 import Foundation
 
 class UploadCommand: Command {
-    
-    // flags
-    private var randompasscode: Bool = false
-    private var verbose: Bool = false
-    private var useGitLogs: Bool = true
 
-    // key/value pairs
-    private var availability: String? = nil
-    private var passcode: String? = nil
-    private var apiKey: String? = nil
-    private var appID: String? = nil
-    private var note: String? = ""
-    private var version: String? = nil
-    private var buildNumber: String? = nil
-    private var projectDir: String? = nil
+    // command params
+    private var flags: Dictionary<String, Dictionary<String, Any>> = Dictionary<String, Dictionary<String, Any>>()
+    private var parameters: Dictionary<String, String> = Dictionary<String, String>()
+    private var paramValues: Dictionary<String, String> = Dictionary<String, String>()
     
-    // key/value pairs for slack
-    /*
-    I need to figure out how to do piping in swift and break this bit into it's own command.
-    */
-    private var slackHookURL: String? = nil
-    private var slackChannel: String? = "#non-existant-channel"
-    
-    
-    // hipchat integration
-    private var hipchatAuthToken: String? = nil
-    private var hipchatRoom: String? = nil
-    private var hipchatColor: String = "green"
-
     // internal vars
-    private var rivieraURL: String? = nil
     private var commitHash: String? = nil
-    private var lastCommitHash: String? = nil
+    
+    var rivieraClient: RivieraBuildAPI? = nil
+    lazy var rivieraBuild: Build = { [unowned self] in
+            return Build(displayName: self.arguments["displayname"] as! String, ipa: self.arguments["ipa"] as! String, availability: self.arguments["availability"] as! String, options: self.paramValues)
+        }()
     
     override func commandName() -> String {
         return "upload"
     }
     
     override func commandShortDescription() -> String {
-        return "Uploads IPAs to RivieraBuild"
+        return "Uploads IPAs to RivieraBuild.\nSpecifies the availablility of the build.\nUse the following values:\n\n 10_minutes\n 1_hour\n 3_hours\n 6_hours\n 12_hours\n 24_hours\n 1_week\n 2_weeks\n 1_month\n 2_months"
     }
     
     override func commandSignature() -> String {
-        return "<displayname> <ipa>"
+        return "<displayname> <ipa> <availability>"
     }
     
     override func handleOptions() {
-        onFlags(["--verbose"], block: { (flag) -> () in
-            self.verbose = true
-        }, usage: "Show more details about what's happening.")
-
-        onFlags(["--disablegitlog"], block: { (flag) -> () in
-            self.useGitLogs = false
-        }, usage: "Disables appending the git log to the notes.")
+        flags = Dictionary<String, Dictionary<String, Any>>()
+        flags["verbose"] = ["usage" : "Show more details about what's happening.", "value" : false]
+        flags["disablegitlog"] = ["usage" : "Disables appending the git log to the notes.", "value" : false]
+        flags["randompasscode"] = ["usage" : "Generate a random passcode.", "value" : false]
+        for (name, attributes) in flags {
+            let arg = "--" + name
+            if let usage = attributes["usage"] as? String {
+                onFlags([arg], block: { (flag) -> () in
+                    var attr = attributes
+                    attr["value"] = true
+                    self.flags[name] = attr
+                    }, usage: usage)
+            }
+        }
         
-        onFlags(["--randompasscode"], block: { (flag) -> () in
-            self.randompasscode = true
-            let randomPassword = PasswordGenerator().generateHex()
-            self.passcode = randomPassword
-        }, usage: "Generate a random passcode.")
-        
-        onKeys(["--availability"], block: {key, value in
-            self.availability = value
-        }, usage: "Specifies the availablility of the build.\nUse the following values:\n\n 10_minutes\n 1_hour\n 3_hours\n 6_hours\n 12_hours\n 24_hours\n 1_week\n 2_weeks\n 1_month\n 2_months", valueSignature: "availability")
-        
-        onKeys(["--passcode"], block: { (key, value) -> () in
-            self.passcode = value
-        }, usage: "Specify the passcode to use for the build.", valueSignature: "passcode")
-        
-        onKeys(["--apikey"], block: { (key, value) -> () in
-            self.apiKey = value
-        }, usage: "Your RivieraBuild API key.", valueSignature: "apikey")
-        
-        onKeys(["--appid"], block: { (key, value) -> () in
-            self.appID = value
-        }, usage: "Your App ID in RivieraBuild.", valueSignature: "appid")
-        
-        onKeys(["--note"], block: { (key, value) -> () in
-            self.note = value
-        }, usage: "The note to show in RivieraBuild", valueSignature: "note")
-        
-        onKeys(["--projectdir"], block: { (key, value) -> () in
-            self.projectDir = value
-        }, usage: "The directory of your project, for Git logs.", valueSignature: "projectdir")
-        
-        // slack config bits
-        onKeys(["--slackhookurl"], block: { (key, value) -> () in
-            self.slackHookURL = value
-        }, usage: "Your Slack webhook URL.", valueSignature: "slackhookurl")
-
-        onKeys(["--slackchannel"], block: { (key, value) -> () in
-            self.slackChannel = value
-        }, usage: "The Slack channel to post to.", valueSignature: "slackchannel")
-        
-        // hipchat config bits
-        onKeys(["--hipchatauthtoken"], block: { (key, value) -> () in
-            self.hipchatAuthToken = value
-            }, usage: "Your Hipchat auth token. To get it: https://www.hipchat.com/account/api.", valueSignature: "hipchatauthtoken")
-        
-        onKeys(["--hipchatroom"], block: { (key, value) -> () in
-            self.hipchatRoom = value
-            }, usage: "The Hipchat room id or name to post to.", valueSignature: "hipchatroom")
-        
-        onKeys(["--hipchatcolor"], block: { (key, value) -> () in
-            self.hipchatColor = value
-            }, usage: "Optional color for the notification posted on Hipchat.", valueSignature: "hipchatcolor")
+        parameters = Dictionary<String, String>()
+        parameters["passcode"] = "Specify the passcode to use for the build."
+        parameters["apikey"] = "Your RivieraBuild API key."
+        parameters["appid"] = "Your App ID in RivieraBuild."
+        parameters["note"] = "The note to show in RivieraBuild."
+        parameters["projectdir"] = "The directory of your project, for Git logs."
+        parameters["slackhookurl"] = "Your Slack webhook URL."
+        parameters["slackchannel"] = "The Slack channel to post to."
+        parameters["hipchatauthtoken"] = "Your Hipchat auth token. To get it: https://www.hipchat.com/account/api."
+        parameters["hipchatroom"] = "The Hipchat room id or name to post to."
+        parameters["hipchatcolor"] = "Optional color for the notification posted on Hipchat."
+        for (name, usage) in parameters {
+            let arg = "--" + name
+            onKeys([arg], block: { (key, value) -> () in
+                self.paramValues[name] = value
+                }, usage: usage , valueSignature: name)
+        }
+    }
+    
+    func setProjectDirectory() -> CommandResult {
+        if let projectDir = self.paramValues["projectdir"] {
+            let fileManager = NSFileManager.defaultManager()
+            var isDir: ObjCBool = false
+            let exists = fileManager.fileExistsAtPath(projectDir, isDirectory: &isDir)
+            return exists && isDir ? .Success : .Failure("The specified value for project dir is not a directory or invalid.")
+        }
+        return .Success
+    }
+    
+    func commitsSinceLastBuildNotes (currentCommitHash: String?) -> String {
+        // get the last commit hash, we need it later if it's there.
+        if let commitHash = currentCommitHash, let appID = self.paramValues["appid"] {
+            if count(commitHash) == 0 {
+                println("WARNING: we were not able to get a commit sha. Are you using git? If yes, please indicate the root directory with the option --projectdir")
+            }
+            if let h = self.flags["disablegitlog"], let useGitLogs = h["value"] {
+                var json = self.rivieraClient!.lastUploadedBuildInfo(appID)
+                if let json = json {
+                    var lastCommitHash = json["commit_sha"].asString
+                    if lastCommitHash != nil {
+                        if let gitNotes = gitLogs(lastCommitHash!) {
+                            return gitNotes
+                        }
+                    }
+                }
+            }
+        } else {
+            println("WARNING: no application ID specified. If you want to add and application id, use the option --appid")
+        }
+        return "";
     }
     
     override func execute() -> CommandResult {
         var result: CommandResult = .Success
         
-        if let apiKey = self.apiKey {
-            let riviera = RivieraBuildAPI(apiKey: apiKey)
+        if let apiKey = self.paramValues["apikey"] {
+            self.rivieraClient = RivieraBuildAPI(apiKey: apiKey)
             
-            // if we were given a projectDir, is it valid?
-            if let projectDir = projectDir {
-                let fileManager = NSFileManager.defaultManager()
-                var isDir: ObjCBool = false
-                let exists = fileManager.fileExistsAtPath(projectDir, isDirectory: &isDir)
-                
-                if !isDir {
-                    return .Failure("The specified value for project dir is not a directory or invalid.")
-                }
-                
-            }
-            
-            // get the current commit hash.
-            // we'll send this to riviera so we can query it next time.
-            commitHash = currentCommitHash()
-            // get the last commit hash, we need it later if it's there.
-            if let commitHash = commitHash, let appID = self.appID {
-                if count(commitHash) == 0 {
-                    println("WARNING: we were not able to get a commit sha. Are you using git? If yes, please indicate the root directory with the option --projectdir")
-                }
-                
-                if useGitLogs {
-                    var json = riviera.lastUploadedBuildInfo(appID)
-                    
-                    if let json = json {
-                        lastCommitHash = json["commit_sha"].asString
-                    }
-                    
-                    // try and get the build notes from git log.
-                    // these will be merged with whatever was passed along in --note.
-                    if lastCommitHash != nil {
-                        if let gitNotes = gitLogs(lastCommitHash!) {
-                            if let note = self.note {
-                                self.note = note.stringByAppendingFormat("\n\n%@", gitNotes)
-                            } else {
-                                self.note = gitNotes
-                            }
-                        }
-                    }
-                }
-            } else {
-                println("WARNING: no application ID specified. If you want to add and application id, use the option --appid")
-            }
-            
-            
-            // try to send it to riviera
-            
-            result = sendToRiviera()
+            result = self.setProjectDirectory()
             switch result {
-            case .Success:
-                0
             case .Failure(let string):
                 return result
+            case .Success:
+                0
+            }
+            
+            commitHash = currentCommitHash()
+            self.rivieraBuild.commitSha = commitHash
+            let gitLogs = self.commitsSinceLastBuildNotes(commitHash)
+            if let note = self.rivieraBuild.note {
+                var noteWithGitLogs =  note.stringByAppendingString(gitLogs)
+                self.rivieraBuild.note = noteWithGitLogs
+            } else {
+                self.rivieraBuild.note = gitLogs
+            }
+            
+            // set random passcode if flag on
+            if let h = self.flags["randompasscode"], let v = h["value"] as? Bool{
+                if v == true {
+                    let randomPassword = PasswordGenerator().generateHex()
+                    self.rivieraBuild.passcode = randomPassword
+                }
+            }
+
+            // try to send it to riviera
+            result = sendToRiviera()
+            switch result {
+            case .Failure(let string):
+                return result
+            case .Success:
+                println("Riviera: download your app at this URL " + self.rivieraBuild.stringURL!)
             }
             
             // get the version and build from the one we just uploaded so we can use it for slack.
@@ -189,9 +155,6 @@ class UploadCommand: Command {
             result = postToSlack()
             switch result {
             case .Success:
-                if let rivieraURL = self.rivieraURL {
-                    println("Riviera: download your app at this URL " + rivieraURL)
-                }
                 0
             case .Failure(let string):
                 return result
@@ -212,59 +175,27 @@ class UploadCommand: Command {
     }
     
     func sendToRiviera() -> CommandResult {
-        // ipa is a required arg, so force unwrap it.
         let ipa = arguments["ipa"] as! String
         // see if the file exists.
         let fileManager = NSFileManager.defaultManager()
         let exists = fileManager.fileExistsAtPath(ipa)
         
-        if exists {
-
-            var parameters = Dictionary<String, AnyObject>()
-            
-            if availability != nil {
-                parameters["availability"] = availability!
-            } else {
-                return .Failure("--availability <value> is a required option.")
-            }
-            
-            if passcode != nil {
-                parameters["passcode"] = passcode!
-            }
-            
-            if appID != nil {
-                parameters["app_id"] = appID!
-            }
-            
-            if note != nil {
-                parameters["note"] = note!
-            }
-            
-            if version != nil {
-                parameters[""] = version!
-            }
-            
-            if buildNumber != nil {
-                parameters["build_number"] = buildNumber!
-            }
-            
-            if commitHash != nil {
-                parameters["commit_sha"] = commitHash!
-            }
-
-            let riviera = RivieraBuildAPI(apiKey: apiKey!)
-            let json = riviera.uploadBuild(ipa, parameters: parameters)
-
-            if let json = json {
-                if let resultURL = json["file_url"].asString {
-                    self.rivieraURL = resultURL
+        if exists {          
+            println("Uploading build ....")
+            if let riviera = self.rivieraClient {
+                let json = riviera.uploadBuild(ipa, build: self.rivieraBuild)
+                if let json = json {
+                    if let resultURL = json["file_url"].asString {
+                        self.rivieraBuild.stringURL = resultURL
+                    }
                 }
             }
-
-            if rivieraURL == nil {
+            
+            if self.rivieraBuild.stringURL == nil {
                 return .Failure("Failed to get the result URL from RivieraBuild.")
             }
             
+            println("Build uplooded to riviera with success!")
             return .Success
         } else {
             return .Failure("The IPA specified does not exist.")
@@ -273,14 +204,14 @@ class UploadCommand: Command {
     
     func currentCommitHash() -> String? {
         var commitHash: String = ""
-
+        
         let currentPath = NSFileManager.defaultManager().currentDirectoryPath
-        if let projectDir = projectDir {
+        if let projectDir = self.paramValues["projectdir"] {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(projectDir)
         }
         
         let command = "git log --format='%H' -n 1"
-        if verbose {
+        if let h = self.flags["verbose"], let verbose = h["value"] {
             println(command)
         }
         let status: Int32 = shellCommand(command) { (status, output) -> Void in
@@ -289,7 +220,7 @@ class UploadCommand: Command {
             }
         }
         
-        if let projectDir = projectDir {
+        if let projectDir = self.paramValues["projectdir"] {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(currentPath)
         }
         
@@ -297,45 +228,38 @@ class UploadCommand: Command {
     }
     
     func lastBuildCommitHash() -> String? {
-        if (appID == nil) || (apiKey == nil) {
+        if let appID = self.paramValues["appid"], let riviera = self.rivieraClient {
+            var commitHash: String? = nil
+            let json = riviera.lastUploadedBuildInfo(appID)
+            
+            if let json = json {
+                if let hash = json["commit_sha"].asString {
+                    if hash != "null" {
+                        commitHash = hash
+                    }
+                }
+            }
+            
+            return commitHash
+        } else {
             return nil
         }
         
-        var commitHash: String? = nil
-        
-        let riviera = RivieraBuildAPI(apiKey: apiKey!)
-        let json = riviera.lastUploadedBuildInfo(appID!)
-
-        if let json = json {
-            if let hash = json["commit_sha"].asString {
-                if hash != "null" {
-                    commitHash = hash
-                }
-            }
-        }
-        
-        return commitHash
     }
     
     func fillLastVersionAndBuildNumber() {
-        if (appID == nil) || (apiKey == nil) {
-            version = nil
-            buildNumber = nil
-            return
-        }
-
-        let riviera = RivieraBuildAPI(apiKey: apiKey!)
-        let json = riviera.lastUploadedBuildInfo(appID!)
-        
-        if let json = json {
-            if let version = json["version"].asString {
-                if version != "null" && count(version) > 0 {
-                    self.version = version
+        if let appID = self.paramValues["appid"], let riviera = self.rivieraClient {
+            let json = riviera.lastUploadedBuildInfo(appID)
+            if let json = json {
+                if let version = json["version"].asString {
+                    if version != "null" && count(version) > 0 {
+                        self.rivieraBuild.version = version
+                    }
                 }
-            }
-            if let buildNumber = json["build_number"].asString {
-                if buildNumber != "null" && count(buildNumber) > 0 {
-                    self.buildNumber = buildNumber
+                if let buildNumber = json["build_number"].asString {
+                    if buildNumber != "null" && count(buildNumber) > 0 {
+                        self.rivieraBuild.buildNumber = buildNumber
+                    }
                 }
             }
         }
@@ -346,12 +270,12 @@ class UploadCommand: Command {
         var commitNotes: String? = nil
         
         let currentPath = NSFileManager.defaultManager().currentDirectoryPath
-        if let projectDir = projectDir {
+        if let projectDir = self.paramValues["projectdir"] {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(projectDir)
         }
         
         let command = String(format: "git log --oneline --no-merges %@..HEAD --format=\"- %%s   -- %%cn\"", sinceHash)
-        if verbose {
+        if let h = self.flags["verbose"], let verbose = h["value"] {
             println(command)
         }
         let status: Int32 = shellCommand(command) { (status, output) -> Void in
@@ -368,7 +292,7 @@ class UploadCommand: Command {
             }
         }
         
-        if let projectDir = projectDir {
+        if let projectDir = self.paramValues["projectdir"] {
             NSFileManager.defaultManager().changeCurrentDirectoryPath(currentPath)
         }
         
@@ -376,37 +300,18 @@ class UploadCommand: Command {
     }
     
     func postToSlack() -> CommandResult {
-        if slackHookURL != nil {
-            // Build the stuff we're going to display on slack...
-            
-            // displayname is a required arg, so force unwrap it.
-            let displayName = arguments["displayname"] as! String
-            
-            // we'll have a URL here too (or it would have failed before) so unwrap rivieraURL.
-            var slackNote: String = String(format: "_*%@*_\nInstall URL: %@", displayName, rivieraURL!)
-            
-            if let passcode = passcode {
-                slackNote = slackNote.stringByAppendingFormat("\nPasscode: %@", passcode)
+        if let slackHookURL = self.paramValues["slackhookurl"], let slackChannel = self.paramValues["slackchannel"] {
+            if let slackNote = self.rivieraBuild.descriptionForSharing() {
+                let slack = SlackWebHookAPI(webHookURL: slackHookURL)
+                println("Posting to Slack...")
+                if slack.postToSlack(slackChannel, text: slackNote) == false {
+                    return .Failure("Slack posting failed.")
+                }
+                println("Posted to Slack!")
+                return .Success
+            } else {
+                return .Failure("Error with creation of the description to share for the build.")
             }
-            
-            if let version = version {
-                slackNote = slackNote.stringByAppendingFormat("\nVersion: %@", version)
-            }
-            
-            if let buildNumber = buildNumber {
-                slackNote = slackNote.stringByAppendingFormat("\nBuild Number: %@", buildNumber)
-            }
-            
-            if let note = note {
-                slackNote = slackNote.stringByAppendingFormat("\nNotes:\n\n %@", note)
-            }
-            
-            let slack = SlackWebHookAPI(webHookURL: slackHookURL!)
-            if slack.postToSlack(slackChannel!, text: slackNote) == false {
-                return .Failure("Slack posting failed.")
-            }
-            
-            return .Success
         } else {
             // we just won't be sending to slack, so don't fail.
             return .Success
@@ -414,35 +319,22 @@ class UploadCommand: Command {
     }
     
     func postToHipchat() -> CommandResult {
-        if let hipchatAuthToken = self.hipchatAuthToken, let room = self.hipchatRoom {
+        if let hipchatAuthToken = self.paramValues["hipchatauthtoken"], let hipchatRoom = self.paramValues["hipchatroom"] {
+            var hipchatColor = "green"
+            if let color = self.paramValues["hipchatcolor"] {
+                hipchatColor = color
+            }
             // Build the stuff we're going to display on slack...
-            
-            // displayname is a required arg, so force unwrap it.
-            let displayName = arguments["displayname"] as! String
-            
-            // we'll have a URL here too (or it would have failed before) so unwrap rivieraURL.
-            var message: String = String(format: "_*%@*_\nInstall URL: %@", displayName, rivieraURL!)
-            
-            if let passcode = passcode {
-                message = message.stringByAppendingFormat("\nPasscode: %@", passcode)
+            if let description = self.rivieraBuild.descriptionForSharing() {
+                let hipchat = HipchatIntegration(authToken: hipchatAuthToken)
+                println("Posting to Hipchat...")
+                if hipchat.post(hipchatRoom, message: description, color: hipchatColor) == false {
+                    return .Failure("Hipchat posting failed.")
+                }
+            } else {
+                return .Failure("Error with creation of the description to share for the build.")
             }
-            
-            if let version = version {
-                message = message.stringByAppendingFormat("\nVersion: %@", version)
-            }
-            
-            if let buildNumber = buildNumber {
-                message = message.stringByAppendingFormat("\nBuild Number: %@", buildNumber)
-            }
-            
-            if let note = note {
-                message = message.stringByAppendingFormat("\nNotes:\n\n %@", note)
-            }
-            let hipchat = HipchatIntegration(authToken: hipchatAuthToken)
-            if hipchat.post(room, message: message, color: self.hipchatColor) == false {
-                return .Failure("Hipchat posting failed.")
-            }
-            
+            println("Posted to Hipchat!.")
             return .Success
         } else {
             // we just won't be sending to slack, so don't fail.
